@@ -1,7 +1,14 @@
+"""Program management routes: upload, ingest and delete programs.
+
+Routes create `ProgramTask` jobs for background ingestion/deletion and
+expose listing of ingested programs.
+"""
+
 import uuid
 from typing import Annotated, Optional
 
-# refactored models and schemas for task tracking
+# NOTE: models and schemas are adapted to support task tracking for long
+# running ingestion jobs.
 from core.auth_helper import get_current_active_user
 from core.logging import logger
 from db.session import get_db
@@ -28,6 +35,12 @@ router = APIRouter(prefix="/program", tags=["program"])
 
 
 def get_session_id(session_id: Optional[str] = Cookie(None)):
+    """Return or create a `session_id` cookie used to group background jobs.
+
+    This function centralizes session cookie generation for endpoints that
+    spawn background tasks.
+    """
+
     if not session_id:
         session_id = str(uuid.uuid4())
     return session_id
@@ -39,18 +52,17 @@ async def upload_program(
     program_name: str = Form(...),
     file: UploadFile = File(...),
 ):
+    """Upload a program file and persist it to the program store.
+
+    Args:
+        current_user: Authenticated user performing the upload.
+        program_name: Name of the program being uploaded.
+        file: Uploaded file object.
+
+    Returns:
+        JSONResponse: Success or error payload with saved file path on success.
     """
-    Description
-    -----------
-        API route to upload a program file
-    Parameters
-    ----------
-        programName: str - Name of the program
-        file: UploadFile - The uploaded file
-    Returns
-    --------
-        result: JSON object with upload status and file path
-    """
+
     try:
         program_store = ProgramStore()
         file_path = await program_store.safe_program(program_name, file)
@@ -68,6 +80,7 @@ async def upload_program(
             },
         )
     except Exception as error:
+        # NOTE: surface a generic error to clients and log details server-side
         logger.exception("Error uploading program %s", program_name)
         return JSONResponse(
             status_code=500,
@@ -87,6 +100,12 @@ async def ingest_documents(
     session_id: str = Depends(get_session_id),
     db: AsyncSession = Depends(get_db),
 ):
+    """Queue an ingestion background task and return the created `ProgramTask`.
+
+    The endpoint sets a session cookie to correlate background jobs with a
+    client session and persists a tracking `ProgramTask` record.
+    """
+
     response.set_cookie(key="session_id", value=session_id, httponly=True)
 
     task_id = str(uuid.uuid4())
@@ -115,9 +134,9 @@ async def ingest_documents(
 @router.get("/list", response_model=ProgramListResponse)
 async def list_ingested_programs(
     current_user: Annotated[User, Depends(get_current_active_user)],
-    # session_id: str = Depends(get_session_id),
-    # db: AsyncSession = Depends(get_db)
 ):
+    """Return the list of ingested programs available in the store."""
+
     response = await list_programs()
     return response
 
@@ -131,16 +150,12 @@ async def delete_ingested_program(
     session_id: str = Depends(get_session_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Description
-    -----------
-        API route to delete a program and its associated index within the vector store
-    Parameters
-    ----------
-        program_name: str - Name of the program to delete
-    Returns
-    --------
-        result: JSON object with deletion status
+    """Queue a background job to delete a program and its vector index.
+
+    Args:
+        program_name: Name of the program to delete.
+    Returns:
+        ProgramTask: Tracking record for the deletion job.
     """
     response.set_cookie(key="session_id", value=session_id, httponly=True)
 

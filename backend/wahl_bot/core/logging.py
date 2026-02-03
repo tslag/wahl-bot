@@ -1,11 +1,17 @@
+"""Centralized logging configuration using Loguru for the application.
+
+This module configures Loguru and installs an intercept handler so code
+that uses the standard library ``logging`` is routed through Loguru. The
+log level can be adjusted via the ``LOG_LEVEL`` environment variable.
+"""
+
 import logging
 import os
 import sys
 
 from loguru import logger
 
-# Centralized logging configuration using Loguru and intercepting stdlib logging
-# Level can be controlled via the LOG_LEVEL environment variable (defaults to INFO)
+# NOTE: Allow overriding of log level via environment for runtime control
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # Remove any previously configured handlers to avoid duplicate logs
@@ -22,7 +28,11 @@ logger.add(
 
 
 class InterceptHandler(logging.Handler):
-    """Default handler to route stdlib logging to Loguru."""
+    """Handler to route stdlib logging records into Loguru.
+
+    This preserves caller information so Loguru logs reflect the originating
+    module/line rather than the interception point.
+    """
 
     def emit(
         self, record: logging.LogRecord
@@ -32,7 +42,7 @@ class InterceptHandler(logging.Handler):
         except Exception:
             level = record.levelno
 
-        # Find caller frame to preserve correct module/line in logs
+        # NOTE: Walk frames to skip logging internals and find original caller
         frame, depth = logging.currentframe(), 2
         while frame and frame.f_code.co_filename == logging.__file__:
             frame = frame.f_back
@@ -46,7 +56,7 @@ class InterceptHandler(logging.Handler):
 # Install the intercept handler as the root logger handler
 logging.basicConfig(handlers=[InterceptHandler()], level=LOG_LEVEL)
 
-# Optionally adjust noisy third-party loggers
+# NOTE: Reduce verbosity of noisy third-party loggers by routing them too
 for name in ("uvicorn", "uvicorn.error", "uvicorn.access", "asyncio"):
     logging.getLogger(name).handlers = [InterceptHandler()]
     logging.getLogger(name).setLevel(LOG_LEVEL)

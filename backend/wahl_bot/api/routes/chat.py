@@ -1,3 +1,8 @@
+"""Chat API routes.
+
+Handles chat requests routed to a program-specific document index.
+"""
+
 from typing import Annotated
 
 from core.auth_helper import get_current_active_user
@@ -20,17 +25,20 @@ async def chat(
         Depends(get_current_active_user),
     ],
 ):
+    """Process a chat request for a given program.
+
+    Args:
+        jason_data: Request body containing `messages`.
+        program_name: Program identifier used to scope the vector store.
+        current_user: Authenticated user performing the request.
+
+    Returns:
+        dict: Assistant message envelope on success.
+
+    Notes:
+        Errors during processing are returned as a 500 JSON response.
     """
-    Description
-    -----------
-        API route to post a chat request
-    Parameters
-    ----------
-        request_body: dict
-    Returns
-    --------
-        result: JSON object which contains chatbot answer
-    """
+
     try:
         logger.info(
             "Chat request for program=%s by user=%s",
@@ -42,6 +50,8 @@ async def chat(
         logger.debug("Chat response generated for program=%s", program_name)
         return response_obj
     except Exception as error:
+        # NOTE: Convert unexpected errors into a generic 500 response to avoid
+        # leaking internal details to clients.
         logger.exception("Error during chat processing for program=%s", program_name)
         error_message = f"Error during chat processing: {str(error)}"
         return JSONResponse(status_code=500, content={"detail": error_message})

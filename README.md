@@ -85,5 +85,3 @@ Troubleshooting
 
 Contributing
 - Fork, make branches for features/fixes, open PRs with a short description and tests where practical.
-
-If you want, I can add a small integration test for the auth refresh flow or wire-up a `show more` UI for long table cells in chat messages. Tell me which you prefer.

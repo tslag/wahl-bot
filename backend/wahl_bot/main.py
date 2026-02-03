@@ -1,3 +1,10 @@
+"""FastAPI application entrypoint for the Wahl-bot backend.
+
+Sets up the application, middleware and routes and provides a lifespan
+context manager that initializes the database on startup and disposes the
+engine on shutdown.
+"""
+
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -14,10 +21,19 @@ from fastapi.responses import JSONResponse
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Code that runs on startup
+    """Lifespan context to run startup and shutdown routines.
+
+    On startup this will attempt to initialize database extensions and
+    metadata tables, retrying a few times if the DB isn't ready yet.
+
+    Yields:
+        None: Control is returned to FastAPI while the app is running.
+    """
+
     logger.info("Starting up")
 
-    # Wait for database to be ready
+    # NOTE: import inside function to avoid importing asyncio at module
+    # import time (keeps module import lightweight for tooling/tests).
     import asyncio
 
     max_retries = 5
@@ -28,6 +44,8 @@ async def lifespan(app: FastAPI):
             logger.info("Database tables created successfully")
             break
         except Exception as e:
+            # NOTE: transient DB connectivity issues are retried to improve
+            # startup robustness when services come up concurrently.
             if attempt < max_retries - 1:
                 logger.warning(
                     "Database connection attempt %d failed: %s. Retrying..",
@@ -42,7 +60,7 @@ async def lifespan(app: FastAPI):
                 raise
 
     yield
-    # Code that runs on shutdown
+
     logger.info("Shutting down")
     await engine.dispose()
 
@@ -63,11 +81,12 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
+    """Return a simple health check / landing response.
+
+    Returns:
+        JSONResponse: A JSON object signalling the backend is reachable.
     """
-    Description
-    -----------
-        Landingpage
-    """
+
     return JSONResponse({"message": "Wahlbot Backend"})
 
 

@@ -1,3 +1,5 @@
+"""Task status routes used to check background job progress."""
+
 from typing import Annotated
 
 from core.auth_helper import get_current_active_user
@@ -19,6 +21,20 @@ async def get_task_status(
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: AsyncSession = Depends(get_db),
 ):
+    """Return the status of a background `ProgramTask` by `task_id`.
+
+    Args:
+        task_id: UUID of the background task to query.
+        current_user: Authenticated user making the request.
+        db: Async database session (dependency-injected).
+
+    Returns:
+        ProgramTask: The matching task record.
+
+    Raises:
+        HTTPException: 404 if task is not found.
+    """
+
     logger.debug(
         "Fetching task status task_id=%s requested by user=%s",
         task_id,

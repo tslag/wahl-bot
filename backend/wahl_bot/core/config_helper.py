@@ -1,10 +1,27 @@
+"""Utilities for loading Jinja prompt templates from disk.
+
+This module helps locate prompt templates relative to the backend
+directory and renders them using Jinja2.
+"""
+
 from pathlib import Path
 
 import jinja2
 from core.logging import logger
 
 
-def get_prompt(path: str):
+def get_prompt(path: str) -> str:
+    """Load and render a Jinja template prompt from the given path.
+
+    Args:
+        path: Relative or absolute path to a Jinja template file.
+
+    Returns:
+        The rendered template string.
+
+    Raises:
+        Exception: Re-raises any exception encountered while loading the template.
+    """
     prompt_template_path = Path(path)
     if not prompt_template_path.is_absolute():
         backend_dir = Path(__file__).resolve().parent.parent.parent

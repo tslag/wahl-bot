@@ -1,3 +1,10 @@
+"""ChatBot service used to run RAG queries and generate answers for programs.
+
+This module provides a lightweight wrapper around an LLM and a vector
+store to perform retrieval-augmented generation (RAG) for program-specific
+question-answering.
+"""
+
 from typing import List
 
 from config.config import settings
@@ -12,6 +19,14 @@ from services.doc_ingestion.vector_store import VectorStore
 
 
 class ChatBot:
+    """Orchestrates retrieval and language model calls to answer questions.
+
+    Attributes:
+        program_name: The program identifier this bot serves.
+        llm: The language model client instance.
+        vector_store: The vector search index for the program.
+    """
+
     def __init__(self, **kwargs) -> None:
         self.program_name = kwargs["program_name"]
 
@@ -24,27 +39,38 @@ class ChatBot:
         self.vector_store = VectorStore(program_name=self.program_name)
         logger.info("ChatBot initialized for program=%s", self.program_name)
 
-    def setup_qa_chain(self):
-        """Set up the QA chain for simple question-answering."""
+    def setup_qa_chain(self) -> None:
+        """Validate that the QA chain prerequisites are available.
+
+        Raises:
+            ValueError: If the vector store has not been initialized.
+        """
         if self.vector_store is None:
             raise ValueError("Vector store not initialized. Ingest documents first.")
 
     async def run_until_final_call(self, history: List[dict]):
-        """
-        Description:
-            Function to orchestrate RAG process.
-        Parameters:
-            history List[dict]: List of messsages of chat history
+        """Run the retrieval + generation flow and return the final answer.
+
+        Args:
+            history: Chat message history; expects the last entry to be the
+                current user question and earlier entries to be previous turns.
+
         Returns:
-            chat_completion_coroutine Coroutine: Coroutine for final response from chat bot
+            The final model-generated answer (string or structured content,
+            depending on the underlying LLM chain response).
+
+        Raises:
+            IndexError: If `history` is empty.
         """
 
         logger.debug("Running chat RAG flow for program=%s", self.program_name)
-        # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
 
+        # NOTE: Build an optimized retrieval query from the user's last question
+        # and the preceding chat history to improve semantic search results.
         last_question: str = history[-1].content
         chat_history: List[dict] = history[:-1]
 
+        # NOTE: Map incoming message roles to the prompt system's expected roles.
         conversation_list: List[tuple[str, str]] | List = []
         for message in chat_history:
             if message.role == "user":
@@ -74,7 +100,8 @@ class ChatBot:
         opt_query = await query_opt_chain.ainvoke(prompt_value)
         logger.debug("Optimized query generated: %s", opt_query)
 
-        # STEP 2: Retrieve relevant documents from the search index with the GPT optimized query
+        # NOTE: Use the optimized query to retrieve the most relevant documents
+        # from the program's vector index.
         results = await self.vector_store.similarity_search(opt_query)
         logger.debug("Retrieved %d matching documents from vector store", len(results))
 
@@ -86,8 +113,8 @@ class ChatBot:
             for doc, similarity in results
         ]
 
-        # STEP 3: Generate a contextual and content specific answer using the search results and chat history
-
+        # NOTE: Build the final prompt using the retrieved context and ask the
+        # LLM to produce a concise, context-aware answer.
         qa_prompt_template = get_prompt(settings.PROMPT_TEMPLATE_PATH_QA)
 
         template = ChatPromptTemplate.from_messages(
@@ -108,13 +135,17 @@ class ChatBot:
         return final_answer
 
     async def chat_without_streaming(self, messages: List[dict]):
-        """
-        Description:
-            Function to run and await chat process without streaming.
-        Parameters:
-            messages List[dict]: List of messsages of chat history
+        """Run the chat flow and return the complete answer in one response.
+
+        This convenience wrapper invokes the full RAG flow and packages the
+        result into the same message shape consumed by the frontend.
+
+        Args:
+            messages: Chat history including the current user question.
+
         Returns:
-            chat_completion_response dict: Final response from chat bot
+            A dict with a single `message` entry containing the assistant's
+            content and role.
         """
         chat_completion_response = await self.run_until_final_call(history=messages)
 

@@ -1,11 +1,13 @@
-"""
-Authentication routes with refresh token support.
+"""Authentication routes with refresh token support.
 
-ENDPOINTS:
-1. POST /auth/token - Login (get access + refresh tokens)
-2. POST /auth/refresh - Get new access token using refresh token
-3. POST /auth/logout - Revoke refresh token
-4. POST /auth/logout-all - Revoke all user's refresh tokens
+Exposes endpoints for issuing and rotating access/refresh tokens and
+for revoking refresh tokens per-session or for all user sessions.
+
+Endpoints:
+    - POST /auth/token: Login (returns access + refresh tokens)
+    - POST /auth/refresh: Exchange refresh token for new access token
+    - POST /auth/logout: Revoke a single refresh token
+    - POST /auth/logout-all: Revoke all user's refresh tokens
 """
 
 from datetime import timedelta
@@ -39,23 +41,20 @@ async def login_for_access_token(
     request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ):
-    """
-    Login endpoint - returns both access and refresh tokens.
+    """Authenticate user and issue access + refresh tokens.
 
-    Flow:
-    1. Validate username and password
-    2. Create access token (short-lived)
-    3. Create refresh token (long-lived)
-    4. Store refresh token in database
-    5. Return both tokens to client
+    Args:
+        request: FastAPI request object used to determine cookie/secure flags.
+        form_data: OAuth2 form containing `username` and `password`.
 
-    Client should:
-    - Store access token in memory (or sessionStorage)
-    - Store refresh token securely (httpOnly cookie or secure storage)
-    - Use access token for API requests
-    - Use refresh token when access token expires
+    Returns:
+        JSONResponse: Access token in response body and refresh token set
+            as an HttpOnly cookie.
+
+    Raises:
+        HTTPException: If authentication fails.
     """
-    # Authenticate user
+    # NOTE: Verify credentials and load user from the DB for authentication.
     user = await authenticate_user(form_data.username, form_data.password)
     if not user:
         logger.warning("Failed login attempt for username=%s", form_data.username)
@@ -65,19 +64,19 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Create access token (15-30 minutes)
+    # NOTE: Access token lifetime is configured via settings.ACCESS_TOKEN_EXPIRE_MINUTES
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
 
-    # Create refresh token (7-30 days)
+    # NOTE: Refresh tokens are longer lived (configured via settings)
     refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token, jti, expires_at = create_refresh_token(
         data={"sub": user.username}, expires_delta=refresh_token_expires
     )
 
-    # Store refresh token in database for revocation tracking
+    # NOTE: Storing refresh tokens server-side (or their JTI) enables revocation
     await store_refresh_token(
         user_id=user.id,
         token=refresh_token,
@@ -86,7 +85,7 @@ async def login_for_access_token(
         device_info=get_device_info(request),
         ip_address=get_client_ip(request),
     )
-    # Return tokens - set refresh token as HttpOnly cookie
+    # NOTE: Return access token in body and set refresh token as HttpOnly cookie
     secure_flag = request.url.scheme == "https"
     body = {"access_token": access_token, "token_type": "bearer"}
     resp = JSONResponse(content=body)
@@ -107,22 +106,22 @@ async def login_for_access_token(
 async def refresh_access_token(
     request: Request,
 ):
-    """
-    Refresh endpoint - get new access token using refresh token.
+    """Exchange a refresh token (from cookie) for a new access token.
 
-    Flow:
-    1. Client sends refresh token
-    2. Server validates refresh token (JWT valid, not revoked, not expired)
-    3. Server issues new access token
-    4. Optionally: issue new refresh token (token rotation)
+    Token rotation is performed: the old refresh token's JTI is revoked and
+    a new refresh token is issued and stored.
 
-    Token Rotation (optional but recommended):
-    - Issue new refresh token with each refresh
-    - Revoke old refresh token
-    - Prevents refresh token reuse if stolen
-    - Limits damage window
+    Args:
+        request: FastAPI request object (expects refresh token in cookies).
+
+    Returns:
+        JSONResponse: New access token with rotated refresh token set as cookie.
+
+    Raises:
+        HTTPException: If no refresh token is provided or verification fails.
     """
-    # Read refresh token from HttpOnly cookie
+    # NOTE: Refresh tokens are expected to be provided in an HttpOnly cookie
+    # to reduce XSS exposure.
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(
@@ -139,8 +138,8 @@ async def refresh_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
 
-    # Token Rotation - issue new refresh token (more secure)
-    # Decode old refresh token to get JTI and revoke it
+    # NOTE: Perform token rotation to mitigate refresh token reuse if stolen.
+    # Decode old refresh token to get JTI and revoke it.
     try:
         payload = jwt.decode(
             refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -151,13 +150,13 @@ async def refresh_access_token(
     except Exception:
         logger.exception("Failed to decode old refresh token during rotation")
 
-    # Create new refresh token
+    # Create new refresh token and persist for revocation tracking
     refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     new_refresh_token, jti, expires_at = create_refresh_token(
         data={"sub": user.username}, expires_delta=refresh_token_expires
     )
 
-    # Store new refresh token
+    # NOTE: Persist the rotated refresh token (JTI) to enable future revocation
     await store_refresh_token(
         user_id=user.id,
         token=new_refresh_token,
@@ -167,7 +166,7 @@ async def refresh_access_token(
         ip_address=get_client_ip(request),
     )
 
-    # Return new tokens - set new refresh token as HttpOnly cookie
+    # NOTE: Return new access token and set rotated refresh token as cookie
     secure_flag = request.url.scheme == "https"
     body = {"access_token": access_token, "token_type": "bearer"}
     resp = JSONResponse(content=body)
@@ -189,18 +188,19 @@ async def logout(
     request: Request,
     response: Response,
 ):
-    """
-    Logout endpoint - revoke refresh token.
+    """Revoke a refresh token (logout).
 
-    Flow:
-    1. Client sends refresh token
-    2. Server marks it as revoked in database
-    3. Client discards both tokens
+    Args:
+        request: FastAPI request object (reads refresh token from cookie).
+        response: FastAPI response used to clear the refresh token cookie.
 
-    Note: Access tokens cannot be revoked (they're stateless JWTs)
-    They'll remain valid until expiration (which is why they're short-lived)
+    Returns:
+        dict: Success message on successful revoke.
+
+    Raises:
+        HTTPException: If refresh token is missing or invalid.
     """
-    # Read refresh token from cookie
+    # NOTE: Expect refresh token in HttpOnly cookie; revoke by JTI lookup.
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         logger.warning("Logout attempted without refresh token")
@@ -231,14 +231,12 @@ async def logout(
 async def logout_all_devices(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
-    """
-    Logout from all devices - revoke all user's refresh tokens.
+    """Revoke all refresh tokens for the current user (logout everywhere).
 
-    Use case:
-    - User suspects account compromise
-    - User wants to logout from all devices at once
-    - Password change (force re-login everywhere)
+    Useful when a user suspects account compromise or wants to force
+    re-authentication on all devices.
     """
+
     await revoke_all_user_tokens(current_user.id)
     logger.info("Revoked all refresh tokens for user id=%s", current_user.id)
     return {"message": "Successfully logged out from all devices"}
@@ -248,7 +246,11 @@ async def logout_all_devices(
 async def read_users_me(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
-    """Get current user info (requires valid access token)."""
+    """Return the current authenticated user's information.
+
+    Requires a valid access token (provided via Authorization header).
+    """
+
     return current_user
 
 
@@ -256,10 +258,9 @@ async def read_users_me(
 async def get_active_sessions(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
-    """
-    Get user's active sessions (non-revoked refresh tokens).
+    """Return active (non-revoked, unexpired) refresh token sessions.
 
-    Shows where user is logged in (device, IP, time).
+    Returns a list of sessions including device info, IP and expiry.
     """
     from datetime import datetime, timezone
 

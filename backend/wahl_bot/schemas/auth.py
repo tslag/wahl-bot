@@ -1,12 +1,19 @@
+"""Pydantic schemas for authentication endpoints.
+
+Includes token response/request shapes and user models used by the
+authentication routes.
+"""
+
 from datetime import datetime
 
 from pydantic import BaseModel
 
 
 class AccessToken(BaseModel):
-    """
-    Response containing only the access token. Used when refresh token
-    is stored in an HttpOnly cookie and should not be returned to JS.
+    """Response containing an access token.
+
+    This response is used when the refresh token is stored in a secure
+    cookie and should not be returned to JavaScript.
     """
 
     access_token: str
@@ -14,19 +21,26 @@ class AccessToken(BaseModel):
 
 
 class TokenRefresh(BaseModel):
-    """Request body for refreshing access token."""
+    """Request body for refreshing the access token using a refresh token."""
 
     refresh_token: str
 
 
 class TokenData(BaseModel):
-    """Data extracted from JWT token."""
+    """Data extracted from a decoded JWT.
+
+    Attributes:
+        username: Subject (username) from the token.
+        token_type: Either "access" or "refresh" indicating token purpose.
+    """
 
     username: str | None = None
     token_type: str = "access"  # "access" or "refresh"
 
 
 class User(BaseModel):
+    """Public user representation returned by the API."""
+
     username: str
     email: str | None = None
     full_name: str | None = None
@@ -34,10 +48,14 @@ class User(BaseModel):
 
 
 class UserCreate(User):
+    """Request body for creating a new user."""
+
     pass
 
 
 class UserInDB(User):
+    """Internal user model including DB-only fields."""
+
     id: int
     hashed_password: str
     created_at: datetime

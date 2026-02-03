@@ -61,14 +61,39 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 def verify_password(plain_password, hashed_password):
+    """Verify a plain password against a stored hash.
+
+    Args:
+        plain_password: The clear-text password provided by the user.
+        hashed_password: The stored password hash to verify against.
+
+    Returns:
+        bool: True if the password matches, False otherwise.
+    """
     return password_hash.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password):
+    """Hash a plain password using the recommended algorithm.
+
+    Args:
+        password: Plain-text password to hash.
+
+    Returns:
+        str: The resulting password hash.
+    """
     return password_hash.hash(password)
 
 
 async def get_user(username: str):
+    """Load a user record from the database by username.
+
+    Args:
+        username: The username to look up.
+
+    Returns:
+        UserInDB | None: Validated user model when found, otherwise None.
+    """
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(UserModel).filter(UserModel.username == username)
@@ -84,6 +109,15 @@ async def get_user(username: str):
 
 
 async def authenticate_user(username: str, password: str) -> UserInDB | bool:
+    """Authenticate a user by username and password.
+
+    Args:
+        username: The username to authenticate.
+        password: The plain-text password to verify.
+
+    Returns:
+        UserInDB | bool: The validated user object on success, or False.
+    """
     user = await get_user(username)
     if not user:
         logger.debug("Authentication failed: user not found username=%s", username)
@@ -95,13 +129,14 @@ async def authenticate_user(username: str, password: str) -> UserInDB | bool:
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-    """
-    Create short-lived access token for API requests.
+    """Create a short-lived access token for API requests.
 
-    Token contains:
-    - sub: username (subject)
-    - exp: expiration timestamp
-    - token_type: "access" (to differentiate from refresh tokens)
+    Args:
+        data: Payload to include in the token (e.g. {"sub": username}).
+        expires_delta: Optional timedelta to override the default expiry.
+
+    Returns:
+        str: Encoded JWT access token.
     """
     to_encode = data.copy()
     if expires_delta:
@@ -119,14 +154,15 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 def create_refresh_token(
     data: dict, expires_delta: timedelta | None = None
 ) -> tuple[str, str, datetime]:
-    """
-    Create long-lived refresh token.
+    """Create a long-lived refresh token and return its JTI and expiry.
 
-    Token contains:
-    - sub: username
-    - exp: expiration timestamp (longer than access token)
-    - token_type: "refresh" (to prevent using refresh token as access token)
-    - jti: unique token ID (for database storage and revocation)
+    Args:
+        data: Payload to include in the token (e.g. {"sub": username}).
+        expires_delta: Optional timedelta to override the default expiry.
+
+    Returns:
+        tuple[str, str, datetime]: (encoded_token, jti, expires_at)
+            where `jti` is a token identifier used for revocation tracking.
     """
     to_encode = data.copy()
     if expires_delta:
@@ -136,7 +172,7 @@ def create_refresh_token(
             days=settings.REFRESH_TOKEN_EXPIRE_DAYS
         )
 
-    # Generate unique token ID for revocation
+    # NOTE: Generate unique token ID (JTI) for revocation tracking.
     jti = secrets.token_urlsafe(32)
 
     to_encode.update({"exp": expire, "token_type": "refresh", "jti": jti})
@@ -154,18 +190,25 @@ async def store_refresh_token(
     device_info: str = None,
     ip_address: str = None,
 ):
-    """
-    Store refresh token in database for tracking and revocation.
+    """Persist refresh token metadata (JTI) for revocation and auditing.
 
-    Why store in database?
-    - Enables revocation (can't revoke stateless JWTs without storage)
-    - Track active sessions per user
-    - See login history
-    - Implement "logout from all devices"
+    Args:
+        user_id: ID of the user the token belongs to.
+        token: The encoded refresh token (not stored; JTI stored instead).
+        jti: Token identifier used to look up/revoke the token.
+        expires_at: Expiration datetime of the refresh token.
+        device_info: Optional device descriptor (browser/OS).
+        ip_address: Optional client IP address.
+
+    Notes:
+        We store the JTI rather than full token to reduce storage of
+        sensitive data while still allowing revocation and session tracking.
     """
     async with AsyncSessionLocal() as db:
+        # NOTE: Store the JTI rather than the full token to reduce storage
+        # of sensitive data and still allow revocation lookups.
         refresh_token = RefreshTokenModel(
-            token=jti,  # Store JTI, not full token (saves space)
+            token=jti,
             user_id=user_id,
             expires_at=expires_at,
             device_info=device_info,
@@ -177,15 +220,20 @@ async def store_refresh_token(
 
 
 async def verify_refresh_token(token: str) -> UserInDB | None:
-    """
-    Verify refresh token and return user if valid.
+    """Verify a refresh token and return the associated user if valid.
 
-    Checks:
-    1. Is token a valid JWT?
-    2. Is token type "refresh"?
-    3. Does token exist in database (via JTI)?
-    4. Is token not revoked?
-    5. Has token not expired?
+    This performs several checks: the token must be a valid JWT, have
+    token_type "refresh", its JTI must exist in the database and not be
+    revoked, and the stored expiry must not have passed.
+
+    Args:
+        token: The encoded refresh token provided by the client.
+
+    Returns:
+        UserInDB | None: The validated user when token is valid.
+
+    Raises:
+        HTTPException: If the token is invalid, revoked, expired, or not found.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -194,7 +242,7 @@ async def verify_refresh_token(token: str) -> UserInDB | None:
     )
 
     try:
-        # Decode JWT
+        # NOTE: Decode and validate JWT payload (will raise on invalid token)
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
@@ -212,7 +260,7 @@ async def verify_refresh_token(token: str) -> UserInDB | None:
     except InvalidTokenError:
         raise credentials_exception
 
-    # Check database
+    # NOTE: Confirm presence and non-revoked status of the JTI in DB
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(RefreshTokenModel).filter(
@@ -238,10 +286,13 @@ async def verify_refresh_token(token: str) -> UserInDB | None:
 
 
 async def revoke_refresh_token(jti: str):
-    """
-    Revoke a refresh token (logout).
+    """Mark a refresh token (identified by JTI) as revoked.
 
-    Marks token as revoked in database so it can't be used again.
+    Args:
+        jti: The token identifier to revoke.
+
+    Returns:
+        None
     """
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -255,8 +306,16 @@ async def revoke_refresh_token(jti: str):
 
 
 async def revoke_all_user_tokens(user_id: int):
-    """
-    Revoke all refresh tokens for a user (logout from all devices).
+    """Revoke all active refresh tokens for a user.
+
+    This sets the `revoked` flag on all non-revoked tokens for the user,
+    effectively logging the user out from all devices.
+
+    Args:
+        user_id: The ID of the user whose tokens should be revoked.
+
+    Returns:
+        None
     """
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -311,24 +370,53 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 async def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
+    """Return the current user if active.
+
+    Args:
+        current_user: User object resolved by `get_current_user` dependency.
+
+    Returns:
+        User: The active user object.
+
+    Raises:
+        HTTPException: If the user is marked as disabled.
+    """
+
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
 
 def get_device_info(request: Request) -> str:
+    """Extract device information (user-agent) from a request.
+
+    Args:
+        request: FastAPI request object.
+
+    Returns:
+        str: Truncated user-agent string (max 255 characters).
     """
-    Extract device information from request headers.
-    """
+
     user_agent = request.headers.get("user-agent", "Unknown")
-    return user_agent[:255]  # Limit length
+    return user_agent[:255]
 
 
 def get_client_ip(request: Request) -> str:
+    """Determine the client's IP address from the request.
+
+    Prefers the `X-Forwarded-For` header when present (typical when
+    the app is behind a proxy/load-balancer), otherwise falls back to the
+    direct client address exposed by the ASGI server.
+
+    Args:
+        request: FastAPI request object.
+
+    Returns:
+        str: Client IP address or "Unknown" if it cannot be determined.
     """
-    Extract client IP address from request.
-    """
-    # Check for proxy headers first
+
+    # NOTE: Check for proxy headers first to support deployments behind a
+    # reverse proxy or load balancer that sets `X-Forwarded-For`.
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()
