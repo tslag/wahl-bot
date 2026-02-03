@@ -1,0 +1,195 @@
+/* Container */
+/* .sidebar {
+  height: 100%;
+  width: 10rem;
+  border-right: 1px solid var(--color-base-300, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+  background-color: #9ca3af;
+  border-radius: 0.5rem;
+  justify-content: center;
+} */
+
+/* keep a fixed width and allow it to stretch vertically */
+.sidebar {
+  flex: 0 0 12rem;
+  align-self: stretch;
+  justify-content: flex-start;
+  padding-top: 0;
+  background-color: var(--color-bg-tertiary);
+  border-right: 1px solid var(--color-border);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* larger width on large screens */
+@media (min-width: 1024px) {
+  .sidebar { flex: 0 0 16rem; }
+}
+
+/* Header */
+.sidebar-header {
+  border-bottom: 1px solid var(--color-border);
+  width: 100%;
+  padding: 1.5rem 1rem;
+  background-color: var(--color-bg-primary);
+}
+
+.sidebar-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-header .app-instruction {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  line-height: 1.4;
+}
+
+.header-row { display: flex; align-items: center; gap: 0.5rem; }
+.icon { font-size: 1.25rem; color: var(--color-text-secondary); }
+.header-title { font-weight: 600; color: var(--color-text-primary); }
+
+/* Show/hide helpers for the LG breakpoint */
+.hidden-lg { display: none; }
+@media (min-width: 1024px) {
+  .hidden-lg { display: block; }
+}
+
+/* Online filter */
+.online-filter { margin-top: .75rem; display:flex; align-items:center; gap:.5rem; }
+.filter-label { cursor: pointer; display:flex; align-items:center; gap:.5rem; }
+.filter-text { font-size: .875rem; }
+.online-count { font-size: .75rem; color: #6b7280; }
+
+/* Programs list */
+.program-list { 
+  overflow-y: auto; 
+  width: 100%; 
+  padding: 0.75rem; 
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Add program button */
+.add-program-item {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--color-primary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.add-program-item:hover { 
+  background-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.add-program-item:active {
+  transform: translateY(0);
+}
+
+/* Program item container */
+.program-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.program-item:hover { 
+  border-color: var(--color-border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Program button inside item */
+.program-item button {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+.program-item button:hover { 
+  background-color: var(--color-bg-secondary);
+}
+
+.program-item button.selected { 
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.delete-program-btn {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.delete-program-btn:hover { 
+  background-color: #fee2e2;
+  color: var(--color-danger);
+  transform: scale(1.1);
+}
+
+.delete-program-btn:active {
+  transform: scale(0.95);
+}
+
+/* Avatar & online dot */
+.avatar-wrap { position: relative; margin: 0 auto; }
+@media (min-width: 1024px) { .avatar-wrap { margin: 0; } }
+
+.avatar {
+  width: 3rem; height: 3rem; object-fit: cover; border-radius: 9999px;
+}
+.online-dot {
+  position: absolute;
+  bottom: 0; right: 0;
+  width: .75rem; height: .75rem;
+  background: #10b981; /* green-500 */
+  border-radius: 9999px;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.6); /* ring effect */
+}
+
+/* User info text */
+.user-info { text-align: left; min-width: 0; }
+.user-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-status { font-size: .875rem; color: #9ca3af; }
+
+/* Empty state message */
+.empty-state { text-align:center; color: #6b7280; padding: 1rem 0; }

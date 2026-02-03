@@ -1,0 +1,32 @@
+.app-card {
+  padding: 1.5rem 3rem;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #3b82f6 100%);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.app-header h1 {
+  margin: 0;
+  color: white;
+}
+
+.main-content {
+  flex: 1;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-primary);
+}

@@ -1,0 +1,25 @@
+/* page background and full height */
+.home-page {
+  /* height: 100vh; h-screen */
+  border-radius: 0.5rem;
+  
+}
+
+
+/* the white card container */
+.home-card {
+  width: 100%;
+  border-radius: 0.5rem; /* rounded-lg */
+  box-shadow: var(--shadow-cl, 0 10px 15px rgba(0,0,0,0.05)); /* shadow-cl */
+  height: calc(100vh - 8rem); /* h-[calc(100vh-8rem)] */
+  overflow: hidden;
+}
+
+/* inner flex that holds the sidebar and main content */
+.home-card__inner {
+  display: flex;            /* left-to-right layout */
+  flex-direction: row;      /* explicit, default is row */
+  height: 100%;
+  align-items: stretch;     /* child elements fill the container vertically */
+}
+

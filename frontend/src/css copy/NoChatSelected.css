@@ -1,0 +1,78 @@
+:root {
+  --primary-color: #4a6fa5;
+  --secondary-color: #166d89;
+  --accent-color: #48cae4;
+  --text-color: #333;
+  --background-color: #f8f9fa;
+  --card-background: #ffffff;
+  --success-color: #4caf50;
+  --error-color: #f44336;
+  --border-radius: 8px;
+  --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.no-chat-container {
+  width: 100%;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;   /* fill container height */
+  overflow: auto;        /* scroll if content overflows */
+  padding: 4rem; /* approximate Tailwind p-16 */
+  background-color: rgba(249,250,251,0.5); /* light background with 50% opacity */
+  box-sizing: border-box;
+  border-radius: var(--border-radius);
+}
+
+.no-chat-inner {
+  max-width: 28rem; /* approx max-w-md */
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* space-y-6 */
+  align-items: center;
+}
+
+.icon-wrap {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.icon-circle {
+  width: 4rem; /* w-16 = 4rem */
+  height: 4rem;
+  border-radius: 0.75rem; /* rounded-2xl */
+  background-color: rgba(37,99,235,0.2); /* primary/10 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: bounce 1.5s infinite;
+}
+
+.icon {
+  width: 2em; /* w-8 */
+  height: 2rem;
+  color: #2563eb; /* primary */
+}
+
+.title {
+  font-size: 1.5rem; /* text-2xl */
+  font-weight: 700;
+  margin: 0;
+  color: #292a2e;
+}
+
+.text-muted {
+  color: rgba(17,24,39,0.6); /* base-content/60 */
+  margin: 0;
+}
+
+/* Simple bounce keyframes to mimic Tailwind's animate-bounce */
+@keyframes bounce {
+  0%, 100% { transform: translateY(-0.25rem); }
+  50% { transform: translateY(0.125rem); }
+}

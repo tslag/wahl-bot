@@ -1,0 +1,25 @@
+/* page background and full height */
+.home-page {
+  border-radius: var(--radius-lg);
+}
+
+/* the white card container */
+.home-card {
+  width: 100%;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  height: calc(100vh - 8rem);
+  overflow: hidden;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+}
+
+/* inner flex that holds the sidebar and main content */
+.home-card__inner {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  align-items: stretch;
+  gap: 0;
+}
+
