@@ -2,7 +2,7 @@
 .home-page {
   /* height: 100vh; h-screen */
   border-radius: 0.5rem;
-  
+
 }
 
 
@@ -22,4 +22,3 @@
   height: 100%;
   align-items: stretch;     /* child elements fill the container vertically */
 }
-

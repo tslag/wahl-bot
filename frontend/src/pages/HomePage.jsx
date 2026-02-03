@@ -17,7 +17,7 @@ const HomePage = () => {
                             {!selectedProgram ? <NoChatSelected /> : <ChatContainer />}
                         </div>
                     </div>
-                    
+
                 </div>
             </div>
         </div>

@@ -22,7 +22,7 @@ A full-stack chat assistant for program ingestion, QA and discussion (React fron
 Getting started (development)
 1. Backend
 
-  - Create a `.env` file in `backend` (copy from `.env.example` if present) and set required variables. 
+  - Create a `.env` file in `backend` (copy from `.env.example` if present) and set required variables.
 
   - Crete a venv and install requirements using uv:
     ```powershell

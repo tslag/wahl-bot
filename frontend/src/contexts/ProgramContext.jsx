@@ -17,8 +17,8 @@ export const ProgramProvider = ({children}) => {
         const resp = await authService.apiRequest(`${API_BASE_URL}/program/list`, { method: 'GET' });
         const response = await resp.json();
         setProgramList(response.programs.map(p => ({ name: p.name, key: p.name })));
-    }  
-    
+    }
+
 
     const addToChatHistory = (message, program = selectedProgram) => {
         if (!program) return;
@@ -39,17 +39,17 @@ export const ProgramProvider = ({children}) => {
 
     useEffect(() => {
         getProgramList();
-    }, []);    
+    }, []);
 
     return (
-        <ProgramContext.Provider value={{ 
+        <ProgramContext.Provider value={{
             programList,
-            selectedProgram, 
-            setSelectedProgram, 
-            chatHistory, 
-            addToChatHistory, 
-            removeFromChatHistory, 
-            getProgramList 
+            selectedProgram,
+            setSelectedProgram,
+            chatHistory,
+            addToChatHistory,
+            removeFromChatHistory,
+            getProgramList
         }}>
             {children}
         </ProgramContext.Provider>

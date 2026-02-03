@@ -49,7 +49,7 @@
     border-radius: 0.5rem;
     font-size: 0.875rem;
     box-sizing: border-box;
-    
+
     /* Multi-line and top-left alignment */
     resize: none;              /* allow vertical resizing */
     min-height: 3rem;              /* minimum height */

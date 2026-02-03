@@ -10,7 +10,6 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
 
-
 engine = create_async_engine(
     settings.DATABASE_URL_ASYNC, echo=True, pool_size=5, max_overflow=10
 )

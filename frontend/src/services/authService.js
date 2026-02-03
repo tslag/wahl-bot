@@ -1,6 +1,6 @@
 /**
  * Frontend Authentication Service with Refresh Token Support
- * 
+ *
  * This shows how to handle tokens on the client side.
  */
 
@@ -59,7 +59,7 @@ class AuthService {
     if (this.tokenRefreshTimeout) {
       clearTimeout(this.tokenRefreshTimeout);
     }
-    
+
     // Schedule refresh
     this.tokenRefreshTimeout = setTimeout(() => {
       // fire-and-forget; refreshAccessToken handles failure
@@ -210,7 +210,7 @@ class AuthService {
    */
   async logoutAllDevices() {
     await this.apiRequest('/auth/logout-all', { method: 'POST' });
-    
+
     // Then logout locally
     await this.logout();
   }

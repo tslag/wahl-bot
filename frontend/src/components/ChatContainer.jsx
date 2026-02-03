@@ -40,8 +40,8 @@ function ChatContainer() {
                 ))}
                 <div ref={messagesEndRef} />
             </div>}
-                
-            
+
+
 
             <ChatInput />
             </div>

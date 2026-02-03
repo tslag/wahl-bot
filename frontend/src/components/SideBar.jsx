@@ -28,7 +28,7 @@ function SideBar() {
     // for deleting a program
     const [deleteModal, setDeleteModal] = useState(false);
     const [deleteProgramName, setDeleteProgramName] = useState("");
-    
+
     useEffect(() => {
         let pollIntervall;
 
@@ -171,8 +171,8 @@ function SideBar() {
                             onClick={() => { setSelectedProgram(program.name); }}>
                             {program.name}
                         </button>
-                        <button className="delete-program-btn" 
-                            onClick={(e) => { 
+                        <button className="delete-program-btn"
+                            onClick={(e) => {
                                 e.stopPropagation();
                                 setDeleteProgramName(program.name);
                                 setDeleteModal(true);
@@ -193,13 +193,13 @@ function SideBar() {
                 <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                     <h2>Add New Program</h2>
                     <form onSubmit={handleNewProgramSubmit}>
-                        <input type="text" placeholder="Program name" className="modal-input" 
+                        <input type="text" placeholder="Program name" className="modal-input"
                             onChange={(e) => setProgramName(e.target.value)}
                             value={programName}
                         />
-                        <input type="file" 
+                        <input type="file"
                             onChange={handleFileChange}
-                            className="modal-input" 
+                            className="modal-input"
                             accept=".pdf"
                             />
                         <div className="modal-actions">

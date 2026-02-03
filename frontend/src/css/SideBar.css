@@ -67,10 +67,10 @@
 .online-count { font-size: .75rem; color: #6b7280; }
 
 /* Programs list */
-.program-list { 
-  overflow-y: auto; 
-  width: 100%; 
-  padding: 0.75rem; 
+.program-list {
+  overflow-y: auto;
+  width: 100%;
+  padding: 0.75rem;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -94,7 +94,7 @@
   font-size: 0.875rem;
   font-weight: 500;
 }
-.add-program-item:hover { 
+.add-program-item:hover {
   background-color: var(--color-primary-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
@@ -116,7 +116,7 @@
   transition: all 0.2s ease;
 }
 
-.program-item:hover { 
+.program-item:hover {
   border-color: var(--color-border-hover);
   box-shadow: var(--shadow-sm);
 }
@@ -137,11 +137,11 @@
   text-align: left;
 }
 
-.program-item button:hover { 
+.program-item button:hover {
   background-color: var(--color-bg-secondary);
 }
 
-.program-item button.selected { 
+.program-item button.selected {
   background-color: var(--color-primary-light);
   color: var(--color-primary);
 }
@@ -160,7 +160,7 @@
   font-size: 1rem;
 }
 
-.delete-program-btn:hover { 
+.delete-program-btn:hover {
   background-color: #fee2e2;
   color: var(--color-danger);
   transform: scale(1.1);

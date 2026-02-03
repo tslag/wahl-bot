@@ -63,7 +63,7 @@ function ChatInput() {
                 <div className="input-group">
                     <textarea
                         className={`input-box ${error ? 'error' : ''}`}
-                        
+
                         value={question}
                         onChange={(e) => setQuestion(e.target.value)}
                         placeholder="Type your message..."
